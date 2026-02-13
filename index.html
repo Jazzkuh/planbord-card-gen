@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Planbord Kaarten Maker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @font-face {
+            font-family: 'SchoolKX';
+            src: url('SchoolKX_new.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        :root {
+            --card-color: #d773af;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f4f4f5; display: flex; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 380px; background: #09090b; color: #fafafa;
+            height: 100vh; overflow-y: auto; padding: 24px 20px;
+            position: fixed; border-right: 1px solid #27272a;
+        }
+        .sidebar::-webkit-scrollbar { width: 8px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        .sidebar::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        .sidebar h2 {
+            color: #fafafa; font-weight: 600; font-size: 1.125rem;
+            letter-spacing: -0.025em; margin: 0 0 24px 0;
+        }
+        .sidebar h3 {
+            color: #a1a1aa; margin: 24px 0 12px 0; font-size: 0.75rem;
+            font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        label {
+            display: block; margin-top: 12px; font-size: 0.875rem;
+            color: #fafafa; font-weight: 500;
+        }
+        input[type="text"], select {
+            width: 100%; padding: 10px 12px; border-radius: 6px;
+            border: 1px solid #27272a; margin-top: 6px; font-family: inherit;
+            font-size: 0.875rem; background: #09090b; color: #fafafa;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        input[type="text"]:focus, select:focus {
+            outline: none; border-color: #3f3f46;
+            box-shadow: 0 0 0 2px rgba(63,63,70,0.3);
+        }
+        input[type="text"]::placeholder { color: #52525b; }
+        select {
+            cursor: pointer; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2371717a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+        }
+
+        /* Color swatches */
+        .color-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 8px; margin-top: 8px;
+        }
+        .color-swatch {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 4px; cursor: pointer; padding: 8px 4px;
+            border-radius: 6px; border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .color-swatch:hover { background: #18181b; }
+        .color-swatch.active { border-color: #fafafa; background: #18181b; }
+        .color-swatch .dot {
+            width: 28px; height: 28px; border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .color-swatch span {
+            font-size: 0.6rem; color: #71717a;
+            text-align: center; line-height: 1.2;
+        }
+
+        /* Range slider */
+        input[type="range"] {
+            width: 100%; margin-top: 8px; accent-color: var(--card-color);
+            background: transparent; cursor: pointer;
+        }
+        .range-row {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .range-row input[type="range"] { flex: 1; }
+        .range-val {
+            font-size: 0.75rem; color: #71717a; min-width: 35px;
+            text-align: right; font-variant-numeric: tabular-nums;
+        }
+
+        /* Upload dropzone */
+        .upload-zone {
+            margin-top: 8px; border: 2px dashed #27272a; border-radius: 8px;
+            padding: 20px 12px; display: flex; flex-direction: column;
+            align-items: center; gap: 4px; cursor: pointer;
+            transition: all 0.2s; background: #18181b;
+        }
+        .upload-zone:hover { border-color: #3f3f46; background: #1c1c1f; }
+        .upload-zone.dragover { border-color: var(--card-color); background: rgba(215,115,175,0.08); }
+        .upload-zone i { font-size: 1.5rem; color: #52525b; transition: color 0.2s; }
+        .upload-zone:hover i, .upload-zone.dragover i { color: var(--card-color); }
+        .upload-zone span { font-size: 0.82rem; font-weight: 500; color: #a1a1aa; }
+        .upload-zone small { font-size: 0.68rem; color: #52525b; }
+
+        /* Buttons */
+        .btn-save {
+            width: 100%; padding: 12px; margin-top: 24px;
+            background: var(--card-color); color: white; border: none;
+            border-radius: 6px; font-size: 0.875rem; font-weight: 600;
+            cursor: pointer; font-family: inherit; transition: opacity 0.15s;
+        }
+        .btn-save:hover { opacity: 0.9; }
+
+        .btn-center {
+            width: 100%; padding: 9px; margin-top: 10px;
+            background: #18181b; color: #a1a1aa; border: 1px solid #27272a;
+            border-radius: 6px; font-size: 0.8rem; font-weight: 500;
+            cursor: pointer; font-family: inherit; transition: all 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-center:hover { background: #27272a; color: #fafafa; }
+
+        .btn-add {
+            width: 100%; padding: 10px; margin-top: 10px;
+            background: #18181b; color: #a1a1aa; border: 1px solid #27272a;
+            border-radius: 6px; font-size: 0.8rem; font-weight: 500;
+            cursor: pointer; font-family: inherit; transition: all 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-add:hover { background: #27272a; color: #fafafa; }
+
+        /* Copyright */
+        .copyright {
+            text-align: center; color: #3f3f46; font-size: 0.7rem;
+            margin-top: 20px; padding-top: 16px;
+            border-top: 1px solid #27272a;
+        }
+
+        /* Main content */
+        .main-content {
+            margin-left: 380px; padding: 40px; flex: 1;
+            display: flex; flex-wrap: wrap; gap: 30px;
+            align-items: flex-start; align-content: flex-start;
+            min-height: 100vh;
+        }
+
+        /* Card preview */
+        .card-wrapper {
+            position: relative;
+        }
+        .card-remove {
+            position: absolute; top: -10px; right: -10px;
+            width: 26px; height: 26px; border-radius: 50%;
+            background: #e53935; color: white; border: 2px solid white;
+            font-size: 0.7rem; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            opacity: 0; transition: opacity 0.2s; z-index: 10;
+        }
+        .card-wrapper:hover .card-remove { opacity: 1; }
+
+        .card {
+            width: 500px; height: 253px; position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            background: var(--card-color);
+            display: flex; flex-direction: column;
+        }
+        /* White image area - inset from colored border */
+        .card-img-area {
+            margin: 10px 10px 0 10px;
+            flex: 1; position: relative; overflow: hidden;
+            cursor: grab; display: flex; align-items: center;
+            justify-content: center; background: white;
+        }
+        .card-img-area:active { cursor: grabbing; }
+        .card-img-area img {
+            position: absolute; left: 50%; top: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            transform-origin: center center;
+            user-select: none; -webkit-user-drag: none;
+            pointer-events: none; max-width: none; max-height: none;
+        }
+        .card-img-area .placeholder {
+            color: #d4d4d8; font-size: 2.5rem;
+            position: static; transform: none;
+            pointer-events: none;
+        }
+        /* Colored gap between image and text */
+        .card-gap {
+            height: 10px; flex-shrink: 0;
+        }
+        /* Text strip at bottom - white bar inset in colored area */
+        .card-text-area {
+            margin: 0 10px 10px 10px;
+            background: white;
+            display: flex; align-items: center; justify-content: center;
+            height: 55px; flex-shrink: 0;
+        }
+        .card-text-inner {
+            text-align: center;
+            font-family: 'SchoolKX', sans-serif;
+            font-size: 46px; color: #1a1a1a;
+            letter-spacing: 1px;
+            white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Print */
+        @media print {
+            .sidebar { display: none !important; }
+            .main-content {
+                margin-left: 0; padding: 0;
+                gap: 4mm;
+            }
+            .card {
+                box-shadow: none;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .card-remove { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2><i class="fa-solid fa-grip" style="color:var(--card-color);margin-right:8px;font-size:0.9rem;"></i>Planbord Kaarten</h2>
+
+    <h3>Kleur</h3>
+    <div class="color-grid" id="colorGrid"></div>
+
+    <h3>Tekst</h3>
+    <input type="text" id="cardText" placeholder="bijv. boekje lezen" oninput="updateActiveCard()">
+
+    <h3>Afbeelding</h3>
+    <div class="upload-zone" id="uploadZone"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')"
+         ondrop="event.preventDefault();this.classList.remove('dragover');handleFileDrop(event)">
+        <input type="file" accept="image/*" id="fileInput" onchange="handleFileSelect(event)" style="display:none;">
+        <i class="fa-solid fa-image"></i>
+        <span>Upload afbeelding</span>
+        <small>Klik of sleep een bestand hierheen</small>
+    </div>
+
+    <label>Zoom</label>
+    <div class="range-row">
+        <input type="range" id="zoomSlider" min="10" max="400" value="100" oninput="updateZoom()">
+        <span class="range-val" id="zoomVal">100%</span>
+    </div>
+
+    <button class="btn-center" onclick="centerImage()">
+        <i class="fa-solid fa-arrows-to-dot"></i> Centreer afbeelding
+    </button>
+
+    <label>Tekst grootte</label>
+    <div class="range-row">
+        <input type="range" id="fontSlider" min="12" max="60" value="46" oninput="updateFontSize()">
+        <span class="range-val" id="fontVal">46px</span>
+    </div>
+
+    <button class="btn-save" onclick="addCard()">
+        <i class="fa-solid fa-plus"></i>&ensp;Kaart toevoegen
+    </button>
+
+    <button class="btn-add" onclick="downloadAllCards()">
+        <i class="fa-solid fa-download"></i> Download alle kaarten
+    </button>
+
+    <button class="btn-add" onclick="window.print()">
+        <i class="fa-solid fa-print"></i> Print alle kaarten
+    </button>
+
+    <div class="copyright">© <span id="copyrightYear"></span> Jazz Bauer</div>
+</div>
+
+<div class="main-content" id="cardContainer">
+    <!-- Cards will appear here -->
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    // Colors
+    const COLORS = [
+        { name: 'Hoeken', hex: '#c7a8e1' },
+        { name: 'Kleedjes', hex: '#d773af' },
+        { name: 'Rode tafel', hex: '#f4574f' },
+        { name: 'Gele tafel', hex: '#fdd85a' },
+        { name: 'Groene tafel', hex: '#c5d45e' },
+        { name: 'Blauwe tafel', hex: '#5ab9d9' },
+        { name: 'Oranje tafel', hex: '#eca154' },
+        { name: 'Verrijking', hex: '#676aa0' },
+    ];
+
+    let currentColor = COLORS[1].hex;
+    let cards = [];
+    let activeCardIndex = -1;
+
+    // Image drag state per card
+    let dragState = {};
+
+    // Copyright year
+    document.getElementById('copyrightYear').textContent = new Date().getFullYear();
+
+    // Build color grid
+    const colorGrid = document.getElementById('colorGrid');
+    COLORS.forEach((c, i) => {
+        const div = document.createElement('div');
+        div.className = 'color-swatch' + (i === 1 ? ' active' : '');
+        div.innerHTML = `<div class="dot" style="background:${c.hex}"></div><span>${c.name}</span>`;
+        div.onclick = () => selectColor(i);
+        colorGrid.appendChild(div);
+    });
+
+    function selectColor(index) {
+        currentColor = COLORS[index].hex;
+        document.documentElement.style.setProperty('--card-color', currentColor);
+        document.querySelectorAll('.color-swatch').forEach((s, i) =>
+            s.classList.toggle('active', i === index));
+        // Update active card if one is selected
+        if (activeCardIndex >= 0) {
+            cards[activeCardIndex].color = currentColor;
+            renderCards();
+        }
+    }
+
+    function addCard() {
+        const text = document.getElementById('cardText').value || '';
+        const zoom = parseInt(document.getElementById('zoomSlider').value);
+        const fileInput = document.getElementById('fileInput');
+
+        const card = {
+            text: text,
+            color: currentColor,
+            imgSrc: '',
+            zoom: zoom,
+            fontSize: parseInt(document.getElementById('fontSlider').value),
+            offsetX: 0,
+            offsetY: 0,
+        };
+
+        // If there's a file selected, read it
+        const file = fileInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                card.imgSrc = e.target.result;
+                cards.push(card);
+                activeCardIndex = cards.length - 1;
+                renderCards();
+                resetForm();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            cards.push(card);
+            activeCardIndex = cards.length - 1;
+            renderCards();
+            resetForm();
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('cardText').value = '';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('zoomSlider').value = 100;
+        document.getElementById('zoomVal').textContent = '100%';
+        document.getElementById('fontSlider').value = 46;
+        document.getElementById('fontVal').textContent = '46px';
+        const uz = document.getElementById('uploadZone');
+        uz.querySelector('span').textContent = 'Upload afbeelding';
+        uz.querySelector('small').textContent = 'Klik of sleep een bestand hierheen';
+    }
+
+    function removeCard(index) {
+        cards.splice(index, 1);
+        if (activeCardIndex >= cards.length) activeCardIndex = cards.length - 1;
+        renderCards();
+    }
+
+    function selectCard(index) {
+        activeCardIndex = index;
+        const card = cards[index];
+        document.getElementById('cardText').value = card.text;
+        document.getElementById('zoomSlider').value = card.zoom;
+        document.getElementById('zoomVal').textContent = card.zoom + '%';
+        document.getElementById('fontSlider').value = card.fontSize;
+        document.getElementById('fontVal').textContent = card.fontSize + 'px';
+        // Set color swatch
+        const ci = COLORS.findIndex(c => c.hex === card.color);
+        if (ci >= 0) selectColor(ci);
+        else {
+            document.documentElement.style.setProperty('--card-color', card.color);
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        }
+        renderCards();
+    }
+
+    function updateActiveCard() {
+        if (activeCardIndex < 0) return;
+        cards[activeCardIndex].text = document.getElementById('cardText').value;
+        renderCards();
+    }
+
+    function updateZoom() {
+        const val = document.getElementById('zoomSlider').value;
+        document.getElementById('zoomVal').textContent = val + '%';
+        if (activeCardIndex < 0) return;
+        cards[activeCardIndex].zoom = parseInt(val);
+        renderCards();
+    }
+
+    function centerImage() {
+        if (activeCardIndex < 0 || !cards[activeCardIndex].imgSrc) return;
+        const card = cards[activeCardIndex];
+        const img = new Image();
+        img.onload = () => {
+            const areaW = 480, areaH = 168;
+            const imgW = img.naturalWidth, imgH = img.naturalHeight;
+            const scaleW = areaW / imgW;
+            const scaleH = areaH / imgH;
+            const fitScale = Math.min(scaleW, scaleH);
+            const zoomPercent = Math.round(fitScale * 100);
+            card.zoom = zoomPercent;
+            card.offsetX = 0;
+            card.offsetY = 0;
+            document.getElementById('zoomSlider').value = zoomPercent;
+            document.getElementById('zoomVal').textContent = zoomPercent + '%';
+            renderCards();
+        };
+        img.src = card.imgSrc;
+    }
+
+    function updateFontSize() {
+        const val = document.getElementById('fontSlider').value;
+        document.getElementById('fontVal').textContent = val + 'px';
+        if (activeCardIndex < 0) return;
+        cards[activeCardIndex].fontSize = parseInt(val);
+        renderCards();
+    }
+
+    function renderCards() {
+        const container = document.getElementById('cardContainer');
+        container.innerHTML = '';
+        cards.forEach((card, i) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'card-wrapper';
+            wrapper.onclick = (e) => {
+                if (!e.target.closest('.card-remove')) selectCard(i);
+            };
+
+            const isActive = i === activeCardIndex;
+            const scale = card.zoom / 100;
+            const imgTransform = card.imgSrc
+                ? `translate(calc(-50% + ${card.offsetX}px), calc(-50% + ${card.offsetY}px)) scale(${scale})`
+                : '';
+
+            wrapper.innerHTML = `
+                <button class="card-remove" onclick="event.stopPropagation();removeCard(${i})" title="Verwijder">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="card" style="background:${card.color};${isActive ? 'outline:3px solid #fafafa;outline-offset:3px;' : ''}" data-index="${i}">
+                    <div class="card-img-area" data-index="${i}">
+                        ${card.imgSrc
+                            ? `<img src="${card.imgSrc}" style="transform:${imgTransform}" draggable="false">`
+                            : '<i class="fa-solid fa-image placeholder"></i>'}
+                    </div>
+                    <div class="card-gap" style="background:${card.color}"></div>
+                    <div class="card-text-area">
+                        <div class="card-text-inner" style="font-size:${card.fontSize}px">${card.text || '&nbsp;'}</div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(wrapper);
+        });
+        // Re-attach drag handlers
+        attachDragHandlers();
+    }
+
+    // Image dragging
+    function attachDragHandlers() {
+        document.querySelectorAll('.card-img-area').forEach(area => {
+            const idx = parseInt(area.dataset.index);
+            let dragging = false, startX, startY, origX, origY;
+
+            area.onmousedown = (e) => {
+                if (!cards[idx].imgSrc) return;
+                dragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                origX = cards[idx].offsetX;
+                origY = cards[idx].offsetY;
+                e.preventDefault();
+            };
+            area.onmousemove = (e) => {
+                if (!dragging) return;
+                cards[idx].offsetX = origX + (e.clientX - startX);
+                cards[idx].offsetY = origY + (e.clientY - startY);
+                const img = area.querySelector('img');
+                if (img) {
+                    const scale = cards[idx].zoom / 100;
+                    img.style.transform = `translate(calc(-50% + ${cards[idx].offsetX}px), calc(-50% + ${cards[idx].offsetY}px)) scale(${scale})`;
+                }
+            };
+            area.onmouseup = () => { dragging = false; };
+            area.onmouseleave = () => { dragging = false; };
+        });
+    }
+
+    // File handling
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const uz = document.getElementById('uploadZone');
+        uz.querySelector('span').textContent = file.name;
+        uz.querySelector('small').textContent = 'Bestand geselecteerd';
+        // If active card exists, update its image
+        if (activeCardIndex >= 0) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                cards[activeCardIndex].imgSrc = e.target.result;
+                cards[activeCardIndex].offsetX = 0;
+                cards[activeCardIndex].offsetY = 0;
+                renderCards();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function handleFileDrop(event) {
+        const file = event.dataTransfer.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        // Put it in the file input
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.getElementById('fileInput').files = dt.files;
+        const uz = document.getElementById('uploadZone');
+        uz.querySelector('span').textContent = file.name;
+        uz.querySelector('small').textContent = 'Bestand geselecteerd';
+        if (activeCardIndex >= 0) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                cards[activeCardIndex].imgSrc = e.target.result;
+                cards[activeCardIndex].offsetX = 0;
+                cards[activeCardIndex].offsetY = 0;
+                renderCards();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Download individual card as PNG
+    async function downloadCard(index) {
+        const card = document.querySelectorAll('.card')[index];
+        if (!card) return;
+        const canvas = await html2canvas(card, { scale: 3, useCORS: true, backgroundColor: null });
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = (cards[index].text || 'kaart_' + (index + 1)).replace(/\s+/g, '_') + '.png';
+        a.click();
+    }
+
+    // Download all cards
+    async function downloadAllCards() {
+        for (let i = 0; i < cards.length; i++) {
+            await downloadCard(i);
+            await new Promise(r => setTimeout(r, 300));
+        }
+    }
+</script>
+</body>
+</html>
