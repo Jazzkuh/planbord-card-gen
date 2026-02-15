@@ -79,6 +79,29 @@
             text-align: center; line-height: 1.2;
         }
 
+        /* Custom color picker */
+        .custom-color-row {
+            display: flex; align-items: center; gap: 8px; margin-top: 10px;
+        }
+        .custom-color-row input[type="color"] {
+            width: 36px; height: 36px; border: 1px solid #27272a;
+            border-radius: 6px; cursor: pointer; background: #09090b;
+            padding: 2px; flex-shrink: 0;
+        }
+        .custom-color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+        .custom-color-row input[type="color"]::-webkit-color-swatch { border-radius: 3px; border: none; }
+        .custom-color-row input[type="text"] {
+            flex: 1; min-width: 0; margin-top: 0; font-family: 'Courier New', monospace;
+            font-size: 0.82rem; letter-spacing: 0.03em;
+        }
+        .btn-custom-color {
+            padding: 8px 14px; background: #18181b; color: #a1a1aa;
+            border: 1px solid #27272a; border-radius: 6px; font-size: 0.78rem;
+            font-weight: 500; cursor: pointer; font-family: inherit;
+            transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-custom-color:hover { background: #27272a; color: #fafafa; }
+
         /* Range slider */
         input[type="range"] {
             width: 100%; margin-top: 8px; accent-color: var(--card-color);
@@ -234,6 +257,11 @@
 
     <h3>Kleur</h3>
     <div class="color-grid" id="colorGrid"></div>
+    <div class="custom-color-row">
+        <input type="color" id="customColorPicker" value="#d773af">
+        <input type="text" id="customColorHex" placeholder="#ff00aa" maxlength="7" spellcheck="false">
+        <button class="btn-custom-color" onclick="applyCustomColor()">Toepassen</button>
+    </div>
 
     <h3>Tekst</h3>
     <input type="text" id="cardText" placeholder="bijv. boekje lezen" oninput="updateActiveCard()">
@@ -337,12 +365,42 @@
         document.documentElement.style.setProperty('--card-color', currentColor);
         document.querySelectorAll('.color-swatch').forEach((s, i) =>
             s.classList.toggle('active', i === index));
+        // Sync custom color inputs
+        document.getElementById('customColorPicker').value = currentColor;
+        document.getElementById('customColorHex').value = currentColor;
         // Update active card if one is selected
         if (activeCardIndex >= 0) {
             cards[activeCardIndex].color = currentColor;
             renderCards();
         }
     }
+
+    function applyCustomColor() {
+        let hex = document.getElementById('customColorHex').value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+        currentColor = hex;
+        document.documentElement.style.setProperty('--card-color', currentColor);
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        document.getElementById('customColorPicker').value = hex;
+        document.getElementById('customColorHex').value = hex;
+        if (activeCardIndex >= 0) {
+            cards[activeCardIndex].color = currentColor;
+            renderCards();
+        }
+    }
+
+    // Sync color picker ↔ hex input
+    document.getElementById('customColorPicker').addEventListener('input', (e) => {
+        document.getElementById('customColorHex').value = e.target.value;
+    });
+    document.getElementById('customColorPicker').addEventListener('change', (e) => {
+        document.getElementById('customColorHex').value = e.target.value;
+        applyCustomColor();
+    });
+    document.getElementById('customColorHex').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') applyCustomColor();
+    });
 
     function addCard() {
         const text = document.getElementById('cardText').value || '';
